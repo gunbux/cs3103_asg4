@@ -43,9 +43,9 @@
 #include <boost/asio/ip/tcp.hpp>
 
 
-const std::string EMAIL = "maxchewjw@gmail.com";
-//const std::string PASSWORD = "Qweasd6969!!!"; 
-const std::string PASSWORD = "nukr hzaa qznv jwro";
+const std::string EMAIL = "";
+//const std::string PASSWORD = ""; 
+const std::string PASSWORD = "";
 
 const std::string host = "192.168.1.6"; // Replace with your server's IP or domain
 const std::string port = "8080";                     // Replace with your server's port if different
