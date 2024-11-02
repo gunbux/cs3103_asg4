@@ -29,8 +29,8 @@ const std::string EMAIL = std::getenv("EMAIL") ? std::getenv("EMAIL") : "";
 const std::string PASSWORD = std::getenv("PASSWORD") ? std::getenv("PASSWORD") : "";
 
 // Pixel Tracking Server Details
-const std::string pixel_server_ip = "192.168.1.6";
-const std::string pixel_server_port = "8080";
+const std::string pixel_server_ip = "pixel.chunyu.sh";
+const std::string pixel_server_port = "443";
 
 const std::string DEFAULT_EMAIL_TEMPLATE = "./assets/email_template.txt";
 
@@ -49,6 +49,18 @@ struct Recipient {
     std::string email;
     std::string name;
 };
+
+/*
+    Function to generate a random query parameter to prevent caching
+
+    std::rand() -> generates a random number
+    std::time(nullptr) -> gets the current time in seconds since the epoch
+*/
+std::string generate_random_query() {
+    std::srand(std::time(nullptr));
+    int random_number = std::rand();
+    return "rand=" + std::to_string(random_number);
+}
 
 /*
  * Function to read the CSV file and populate the recipients vector
@@ -368,8 +380,8 @@ void send_emails(const std::string &department_code, const std::string &email_te
 
             // Include tracking pixel
             std::string tracking_pixel =
-                    "<img src=\"http://" + pixel_server_ip + ":" + pixel_server_port +
-                    "/image\" alt=\"image\" width=\"1\" height=\"1\" />";
+                    "<img src=\"https://" + pixel_server_ip +
+                    "/image?" + generate_random_query() + "\" alt=\"image\" style=\"display:none\" />";
 
             // Append or insert the tracking pixel into the email body
             personalized_body += tracking_pixel;
