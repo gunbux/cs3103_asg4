@@ -4,7 +4,7 @@ LDFLAGS = -lboost_system -lboost_filesystem -lboost_thread -lssl -lcrypto -lpthr
 TARGET = smart_mailer
 SRC_DIR = src
 SRC = $(SRC_DIR)/smart_mailer.cpp
-PYTHON_DEPS = requirements.txt
+PYTHON_DEPS = $(SRC_DIR)/pixel_server/requirements.txt
 
 include .env
 

@@ -1,0 +1,22 @@
+version: '3'
+services:
+  pixel-server:
+    build:
+      context: .
+      dockerfile: src/pixel_server/Dockerfile
+      args:
+        - GIT_COMMIT_HASH
+    restart: on-failure
+    networks:
+      - intranet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pixel-server.rule=Host(`pixel.chunyu.sh`)"
+      - "traefik.http.services.pixel-server.loadbalancer.server.port=8080"
+      - "traefik.http.routers.pixel-server.entrypoints=websecure"
+      - "traefik.http.routers.pixel-server.tls=true"
+      - "traefik.http.routers.pixel-server.tls.certresolver=tlschallenge"
+
+networks:
+  intranet:
+    name: network_intranet
