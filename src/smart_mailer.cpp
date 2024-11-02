@@ -32,9 +32,9 @@ const std::string PASSWORD = std::getenv("PASSWORD") ? std::getenv("PASSWORD") :
 const std::string pixel_server_ip = "192.168.1.6";
 const std::string pixel_server_port = "8080";
 
-const std::string EMAIL_TEMPLATE_TXT = "./assets/email_template.txt";
+const std::string DEFAULT_EMAIL_TEMPLATE = "./assets/email_template.txt";
 
-const std::string MAIL_CSV_PATH = "./assets/email_list.csv";
+const std::string DEFAULT_MAIL_CSV_PATH = "./assets/email_list.csv";
 
 // Boost namespaces
 namespace beast = boost::beast;
@@ -212,7 +212,7 @@ std::string read_response(ssl::stream <tcp::socket> &socket) {
 
 /*
     Encodes given string into Base64 format
-
+fix
     Required as Base64 is used in SMTP for encoding credentials
 
     boost::beast::detail::base64::encoded_size(input.size()) -> calculates the required size of the encoded output based on the input size
@@ -268,7 +268,7 @@ void send_email(ssl::stream <tcp::socket> &ssl_socket, const std::string &recipi
 }
 
 
-void send_emails(const std::string &department_code) {
+void send_emails(const std::string &department_code, const std::string &email_template, const std::string &email_list) {
     try {
         /*
             Section 1: Creating SSL context/sockets, resolving SMTP domains
@@ -334,7 +334,7 @@ void send_emails(const std::string &department_code) {
 
         // Read the CSV file
         std::vector<Recipient> recipients;
-        read_csv(MAIL_CSV_PATH, recipients);
+        read_csv(email_list, recipients);
 
         // Filter recipients based on department code
         std::vector<Recipient> filtered_recipients;
@@ -352,7 +352,7 @@ void send_emails(const std::string &department_code) {
         // Read email template
         std::string email_subject;
         std::string email_body;
-        read_email_template(EMAIL_TEMPLATE_TXT, email_subject, email_body);
+        read_email_template(email_template, email_subject, email_body);
 
         // Map to keep track of emails sent per department
         std::map<std::string, int> department_counts;
@@ -401,22 +401,33 @@ void send_emails(const std::string &department_code) {
 }
 
 int main(int argc, char *argv[]) {
+    std::string email_template = DEFAULT_EMAIL_TEMPLATE;
+    std::string email_list = DEFAULT_MAIL_CSV_PATH;
+
     if (argc < 2) {
         std::cout << "Usage: ./smart_mailer <command> [options]\n";
         std::cout << "Commands:\n";
-        std::cout << "  send [recipient]\n";
+        std::cout << "  send [recipient] [--template <email_template.txt>] [--list <email_list.csv>]\n";
         std::cout << "  get_count\n";
         return 1;
     }
 
     std::string command = argv[1];
 
+    for (int i = 2; i < argc; ++i) {
+        if (std::string(argv[i]) == "--template" && i + 1 < argc) {
+            email_template = argv[++i];
+        } else if (std::string(argv[i]) == "--list" && i + 1 < argc) {
+            email_list = argv[++i];
+        }
+    }
+
     if (command == "send") {
         std::string recipient = "all"; // Default recipient
         if (argc >= 3) {
             recipient = argv[2]; // Get recipient from command line
         }
-        send_emails(recipient);
+        send_emails(recipient, email_template, email_list);
     } else if (command == "get_count") {
         get_count();
     } else {
