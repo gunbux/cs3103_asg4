@@ -3,82 +3,63 @@
     The email_list cannot handle spaces I think
 */
 
-
-/*
-    To run
-    g++ -std=c++11 -o smart_mailer smart_mailer.cpp -lboost_system -lboost_filesystem -lboost_thread -lssl -lcrypto -lpthread
-
-
-    To install
-    sudo dnf install gcc-c++ boost-devel openssl-devel
-    or
-    sudo apt-get update
-    sudo apt-get install build-essential libboost-all-dev libssl-dev
-
-
-*/
-
-
-
+#include <chrono>
 #include <fstream>
-#include <sstream>
-#include <vector>
 #include <iostream>
 #include <map>
-
-
-#include <thread>
-#include <chrono>
-
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
-#include <boost/beast/core/detail/base64.hpp>
-#include <iostream>
+#include <sstream>
 #include <string>
+#include <thread>
+#include <vector>
 
-#include <boost/beast/core.hpp>
-#include <boost/beast/http.hpp>
-#include <boost/beast/version.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/asio.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/beast/core.hpp>
+#include <boost/beast/core/detail/base64.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/version.hpp>
 
+// SMTP Server Details
+const std::string SMTP_SERVER = std::getenv("SMTP_SERVER") ? std::getenv("SMTP_SERVER") : "";
+const std::string SMTP_DOMAIN = std::getenv("SMTP_DOMAIN") ? std::getenv("SMTP_DOMAIN") : "";
+const std::string EMAIL = std::getenv("EMAIL") ? std::getenv("EMAIL") : "";
+const std::string PASSWORD = std::getenv("PASSWORD") ? std::getenv("PASSWORD") : "";
 
-const std::string EMAIL = "";
-//const std::string PASSWORD = ""; 
-const std::string PASSWORD = "";
+// Pixel Tracking Server Details
+const std::string pixel_server_ip = "192.168.1.6";
+const std::string pixel_server_port = "8080";
 
-const std::string host = "192.168.1.6"; // Replace with your server's IP or domain
-const std::string port = "8080";                     // Replace with your server's port if different
+const std::string EMAIL_TEMPLATE_TXT = "./assets/email_template.txt";
 
-const std::string EMAIL_TEMPLATE_TXT = "email_template.txt";
+const std::string MAIL_CSV_PATH = "./assets/email_list.csv";
 
-const std::string MAIL_CSV_PATH = "email_list.csv";
-
-namespace beast = boost::beast;         // from <boost/beast.hpp>
-namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace net = boost::asio;            // from <boost/asio.hpp>
-using tcp = net::ip::tcp;               // from <boost/asio/ip/tcp.hpp>
+// Boost namespaces
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = net::ip::tcp;
 using boost::asio::ip::tcp;
 namespace ssl = boost::asio::ssl;
 
 
-struct Recipient  
-{
+struct Recipient {
     std::string department_code;
     std::string email;
     std::string name;
 };
 
-
-
-
-
-
-void read_csv(const std::string& filename, std::vector<Recipient>& recipients)
-{
+/*
+ * Function to read the CSV file and populate the recipients vector
+ *
+ * filename: path to the CSV file
+ * recipients: vector to store the recipient details
+ */
+void read_csv(const std::string &filename, std::vector<Recipient> &recipients) {
     std::ifstream file(filename);
-    if (!file.is_open()) 
-    {
+    if (!file.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;
         return;
     }
@@ -92,13 +73,12 @@ void read_csv(const std::string& filename, std::vector<Recipient>& recipients)
         std::string department_code, email, name;
 
         // Assuming the CSV columns are: department_code,email,name
-        if 
-        (
-            std::getline(ss, department_code, ',') &&
-            std::getline(ss, email, ',') &&
-            std::getline(ss, name)
-        ) 
-        {
+        if
+                (
+                std::getline(ss, department_code, ',') &&
+                std::getline(ss, email, ',') &&
+                std::getline(ss, name)
+                ) {
 
             Recipient recipient;
             recipient.department_code = department_code;
@@ -113,9 +93,11 @@ void read_csv(const std::string& filename, std::vector<Recipient>& recipients)
 
 /*
     Function to replace the #name# and #department# with the recipient details
+
+    text: email template text
+    recipient: recipient details
 */
-void replace_placeholders(std::string& text, const Recipient& recipient) 
-{
+void replace_placeholders(std::string &text, const Recipient &recipient) {
     size_t pos;
 
     while ((pos = text.find("#name#")) != std::string::npos) {
@@ -125,16 +107,12 @@ void replace_placeholders(std::string& text, const Recipient& recipient)
     while ((pos = text.find("#department#")) != std::string::npos) {
         text.replace(pos, 12, recipient.department_code);
     }
-
-    // Add more placeholders if needed
 }
-
-
 
 std::string email_subject;
 std::string email_body;
 
-void read_email_template(const std::string& filename, std::string& subject, std::string& body) {
+void read_email_template(const std::string &filename, std::string &subject, std::string &body) {
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error opening email template file: " << filename << std::endl;
@@ -152,8 +130,6 @@ void read_email_template(const std::string& filename, std::string& subject, std:
     file.close();
 }
 
-
-
 void get_count() {
     try {
         std::string target = "/counter";
@@ -167,14 +143,14 @@ void get_count() {
         tcp::socket socket(ioc);
 
         // Look up the domain name
-        auto const results = resolver.resolve(host, port);
+        auto const results = resolver.resolve(pixel_server_ip, pixel_server_port);
 
         // Make the connection on the IP address we get from a lookup
         net::connect(socket, results.begin(), results.end());
 
         // Set up an HTTP GET request message
-        http::request<http::empty_body> req{http::verb::get, target, version};
-        req.set(http::field::host, host);
+        http::request <http::empty_body> req{http::verb::get, target, version};
+        req.set(http::field::host, pixel_server_ip);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
@@ -184,7 +160,7 @@ void get_count() {
         beast::flat_buffer buffer;
 
         // Declare a container to hold the response
-        http::response<http::dynamic_body> res;
+        http::response <http::dynamic_body> res;
 
         // Receive the HTTP response
         http::read(socket, buffer, res);
@@ -201,15 +177,10 @@ void get_count() {
         if (ec && ec != beast::errc::not_connected)
             throw beast::system_error{ec};
 
-    } catch (std::exception const& e) {
+    } catch (std::exception const &e) {
         std::cerr << "Error during get_count: " << e.what() << std::endl;
     }
 }
-
-
-
-
-
 
 /*
     Socket: TCP socket wrapped in a SSL_socket for encryption
@@ -220,8 +191,7 @@ void get_count() {
     boost::asio:buffer ->   converts data given into a format of boost::asio::const_buffer object
                             to be used using Boost.Asio’s socket functions
 */
-void send_command(ssl::stream<tcp::socket>& socket, const std::string& cmd) 
-{
+void send_command(ssl::stream <tcp::socket> &socket, const std::string &cmd) {
     boost::asio::write(socket, boost::asio::buffer(cmd));
 }
 
@@ -232,8 +202,7 @@ void send_command(ssl::stream<tcp::socket>& socket, const std::string& cmd)
     boost::asio::streambuf -> buffer type specifically designed for stream-oriented I/O
     std::istream -> input stream class to handle input streams
 */
-std::string read_response(ssl::stream<tcp::socket>& socket) 
-{
+std::string read_response(ssl::stream <tcp::socket> &socket) {
     boost::asio::streambuf response;
     boost::asio::read_until(socket, response, "\r\n");
     std::istream response_stream(&response);
@@ -250,8 +219,7 @@ std::string read_response(ssl::stream<tcp::socket>& socket)
     boost::beast::detail::base64::encoded_size(input.size()) -> calculates the required size of the encoded output based on the input size
     boost::beast::detail::base64::encode -> Boost function that performs the Base64 encoding
 */
-std::string base64_encode(const std::string& input) 
-{
+std::string base64_encode(const std::string &input) {
     std::string output;
     output.resize(boost::beast::detail::base64::encoded_size(input.size()));
     boost::beast::detail::base64::encode(&output[0], input.data(), input.size());
@@ -259,10 +227,8 @@ std::string base64_encode(const std::string& input)
 }
 
 
-
-void send_email(ssl::stream<tcp::socket>& ssl_socket, const std::string& recipient_email,
-                const std::string& subject, const std::string& body) 
-{
+void send_email(ssl::stream <tcp::socket> &ssl_socket, const std::string &recipient_email,
+                const std::string &subject, const std::string &body) {
 
     std::string response;
 
@@ -270,36 +236,21 @@ void send_email(ssl::stream<tcp::socket>& ssl_socket, const std::string& recipie
     std::string mail_from = "MAIL FROM:<" + std::string(EMAIL) + ">\r\n";
     send_command(ssl_socket, mail_from);
     response = read_response(ssl_socket);
+    std::cout << "MAIL FROM" << std::endl;
     std::cout << "Server: " << response << std::endl;
-
-    // if (response.substr(0, 3) != "250") 
-    // {
-    //     std::cerr << "Error after MAIL FROM: " << response << std::endl;
-    //     return;
-    // }
 
     // RCPT TO
     std::string rcpt_to = "RCPT TO:<" + recipient_email + ">\r\n";
     send_command(ssl_socket, rcpt_to);
     response = read_response(ssl_socket);
+    std::cout << "RCPT TO" << std::endl;
     std::cout << "Server: " << response << std::endl;
-
-    // if (response.substr(0, 3) != "250") 
-    // {
-    //     std::cerr << "Error after RCPT TO: " << response << std::endl;
-    //     return;
-    // }
 
     // DATA
     send_command(ssl_socket, "DATA\r\n");
     response = read_response(ssl_socket);
+    std::cout << "DATA" << std::endl;
     std::cout << "Server: " << response << std::endl;
-
-    // if (response.substr(0, 3) != "354") 
-    // {
-    //     std::cerr << "Error after DATA: " << response << std::endl;
-    //     return;
-    // }
 
     // Email headers and content
     std::string from = "From: Your Name <" + std::string(EMAIL) + ">\r\n";
@@ -310,89 +261,57 @@ void send_email(ssl::stream<tcp::socket>& ssl_socket, const std::string& recipie
     // Wrap the body in HTML tags
     std::string html_body = "<html><body>" + body + "</body></html>";
 
-    std::string email_content = "Subject: " + subject + "\r\n" + from + to + mime_version + content_type + "\r\n" + body + "\r\n.\r\n";
+    std::string email_content =
+            "Subject: " + subject + "\r\n" + from + to + mime_version + content_type + "\r\n" + body + "\r\n.\r\n";
 
     // Send the email content
+    std::cout << "EMAIL" << std::endl;
     send_command(ssl_socket, email_content);
 
     response = read_response(ssl_socket);
     std::cout << "Server: " << response << std::endl;
-
-    // if (response.substr(0, 3) != "250") 
-    // {
-    //     std::cerr << "Error after sending email content: " << response << std::endl;
-    //     return;
-    // }
 }
 
 
-
-
-
-void send_emails() 
-{
-    try 
-    {
+void send_emails() {
+    try {
         /*
             Section 1: Creating SSL context/sockets, resolving SMTP domains
         */
-    
+
         // Create SSL context and socket
-        // Creating the SSL context that defines the set of parameters we want 
-        // for using SSL/TLS protocols 
+        // Creating the SSL context that defines the set of parameters we want
+        // for using SSL/TLS protocols
         boost::asio::io_context io_context;
         ssl::context ctx(ssl::context::tlsv12_client);
-        ssl::stream<tcp::socket> ssl_socket(io_context, ctx);
+        ssl::stream <tcp::socket> ssl_socket(io_context, ctx);
 
         // tells SSL context (the ctx) to use system's default locations for trusted root certificate
         ctx.set_default_verify_paths();
 
         // Resolve SMTP server and connect
         tcp::resolver resolver(io_context);
-        auto endpoints = resolver.resolve("smtp.gmail.com", "465");
+        auto endpoints = resolver.resolve(SMTP_SERVER, "465");
 
         // we use ssl_socket.next_layer() to access the underlying TCP socket wrapped in SSL Socket
-        // connect() here is us trying to connect to any of the resolved IP endpoints that we have resolved 
+        // connect() here is us trying to connect to any of the resolved IP endpoints that we have resolved
         // from .resolve() resolving our smtp server
         boost::asio::connect(ssl_socket.next_layer(), endpoints);
 
         // Perform SSL handshake
         ssl_socket.handshake(ssl::stream_base::client);
 
-
-
-
-
-
-
         /*
             Section 2: SMTP connection and authentication
-        */ 
-        
+        */
 
         // Send EHLO
-        std::string ehlo_command = "EHLO gmail.com\r\n";
+        std::string ehlo_command = "EHLO " + SMTP_DOMAIN + "\r\n";
         send_command(ssl_socket, ehlo_command);
-        
+
         std::string response = read_response(ssl_socket);
         std::cout << "Server: " << response << std::endl;
-
-
-        /*
-            while() loop, loops through and processes every line of response by server 
-            This is done by checking whether the fourth character is '-'
-
-            An example of a multi-line response is
-            250-smtp.gmail.com at your service
-            250-AUTH LOGIN PLAIN
-            250 SIZE 35882577
-
-            response[3] checks for the '-' as the fourth character.
-            The last line does not have this indicating the end of the server response
-
-        */
-        while (response[3] == '-') 
-        {
+        while (response[3] == '-') {
             response = read_response(ssl_socket);
             std::cout << "Server: " << response << std::endl;
         }
@@ -403,7 +322,7 @@ void send_emails()
         std::cout << "Server: " << response << std::endl;
 
         // Send encoded_email
-        std::string encoded_email= base64_encode(EMAIL) + "\r\n";
+        std::string encoded_email = base64_encode(EMAIL) + "\r\n";
         send_command(ssl_socket, encoded_email);
         response = read_response(ssl_socket);
         std::cout << "Server: " << response << std::endl;
@@ -412,17 +331,8 @@ void send_emails()
         std::string encoded_password = base64_encode(PASSWORD) + "\r\n";
         send_command(ssl_socket, encoded_password);
         response = read_response(ssl_socket);
+        std::cout << "LOGIN" << std::endl;
         std::cout << "Server: " << response << std::endl;
-    
-        // Adding this make the thing fail
-        // // Check if authentication was successful
-        // // This prevents the program from moving on till a response comes in 
-        // if (response.substr(0, 3) != "235") 
-        // {
-        //     std::cerr << "Authentication failed: " << response << std::endl;
-        //     return;
-        // }
-
 
         // Prompt user for department code
         std::string department_code;
@@ -435,16 +345,13 @@ void send_emails()
 
         // Filter recipients based on department code
         std::vector<Recipient> filtered_recipients;
-        for (const auto& recipient : recipients) 
-        {
-            if (department_code == "all" || recipient.department_code == department_code) 
-            {
+        for (const auto &recipient: recipients) {
+            if (department_code == "all" || recipient.department_code == department_code) {
                 filtered_recipients.push_back(recipient);
             }
         }
 
-        if (filtered_recipients.empty()) 
-        {
+        if (filtered_recipients.empty()) {
             std::cout << "No recipients found for the specified department code.\n";
             return;
         }
@@ -458,8 +365,7 @@ void send_emails()
         std::map<std::string, int> department_counts;
 
         // Loop through each recipient and send email
-        for (const auto& recipient : filtered_recipients) 
-        {
+        for (const auto &recipient: filtered_recipients) {
             // Personalize subject and body
             std::string personalized_subject = email_subject;
             std::string personalized_body = email_body;
@@ -468,11 +374,9 @@ void send_emails()
             replace_placeholders(personalized_body, recipient);
 
             // Include tracking pixel
-            std::string tracking_pixel = "<img src=\"http://" + host + ":" + port + "/image\" alt=\"image\" width=\"1\" height=\"1\" />";
-
-            
-
-
+            std::string tracking_pixel =
+                    "<img src=\"http://" + pixel_server_ip + ":" + pixel_server_port +
+                    "/image\" alt=\"image\" width=\"1\" height=\"1\" />";
 
             // Append or insert the tracking pixel into the email body
             personalized_body += tracking_pixel;
@@ -489,7 +393,7 @@ void send_emails()
 
         // Generate report
         std::cout << "\nEmail sending report:\n";
-        for (const auto& entry : department_counts) {
+        for (const auto &entry: department_counts) {
             std::cout << "Department " << entry.first << ": " << entry.second << " emails sent.\n";
         }
 
@@ -498,17 +402,10 @@ void send_emails()
         std::string response_quit = read_response(ssl_socket);
         std::cout << "Server: " << response_quit << std::endl;
 
-    } catch (std::exception& e) 
-    {
+    } catch (std::exception &e) {
         std::cerr << "Exception during send_emails: " << e.what() << std::endl;
     }
 }
-
-
-
-
-
-
 
 int main() {
     while (true) {
