@@ -44,7 +44,6 @@ using tcp = net::ip::tcp;
 using boost::asio::ip::tcp;
 namespace ssl = boost::asio::ssl;
 
-
 struct Recipient {
     std::string department_code;
     std::string email;
@@ -236,21 +235,18 @@ void send_email(ssl::stream <tcp::socket> &ssl_socket, const std::string &recipi
     std::string mail_from = "MAIL FROM:<" + std::string(EMAIL) + ">\r\n";
     send_command(ssl_socket, mail_from);
     response = read_response(ssl_socket);
-    std::cout << "MAIL FROM" << std::endl;
-    std::cout << "Server: " << response << std::endl;
+    std::cout << "MAIL FROM Response: " << response << std::endl;
 
     // RCPT TO
     std::string rcpt_to = "RCPT TO:<" + recipient_email + ">\r\n";
     send_command(ssl_socket, rcpt_to);
     response = read_response(ssl_socket);
-    std::cout << "RCPT TO" << std::endl;
-    std::cout << "Server: " << response << std::endl;
+    std::cout << "RCPT TO Response: " << response << std::endl;
 
     // DATA
     send_command(ssl_socket, "DATA\r\n");
     response = read_response(ssl_socket);
-    std::cout << "DATA" << std::endl;
-    std::cout << "Server: " << response << std::endl;
+    std::cout << "DATA Response: " << response << std::endl;
 
     // Email headers and content
     std::string from = "From: Your Name <" + std::string(EMAIL) + ">\r\n";
@@ -265,15 +261,14 @@ void send_email(ssl::stream <tcp::socket> &ssl_socket, const std::string &recipi
             "Subject: " + subject + "\r\n" + from + to + mime_version + content_type + "\r\n" + body + "\r\n.\r\n";
 
     // Send the email content
-    std::cout << "EMAIL" << std::endl;
     send_command(ssl_socket, email_content);
 
     response = read_response(ssl_socket);
-    std::cout << "Server: " << response << std::endl;
+    std::cout << "EMAIL Response: " << response << std::endl;
 }
 
 
-void send_emails() {
+void send_emails(const std::string &department_code) {
     try {
         /*
             Section 1: Creating SSL context/sockets, resolving SMTP domains
@@ -306,38 +301,36 @@ void send_emails() {
         */
 
         // Send EHLO
+        std::cout << "Sending EHLO" << std::endl;
         std::string ehlo_command = "EHLO " + SMTP_DOMAIN + "\r\n";
         send_command(ssl_socket, ehlo_command);
 
         std::string response = read_response(ssl_socket);
-        std::cout << "Server: " << response << std::endl;
+        std::cout << "EHLO Response: " << response << std::endl;
+
+        // TODO: This doesn't work
         while (response[3] == '-') {
             response = read_response(ssl_socket);
             std::cout << "Server: " << response << std::endl;
         }
 
         // Authentication
+        std::cout << "Sending AUTH LOGIN" << std::endl;
         send_command(ssl_socket, "AUTH LOGIN\r\n");
         response = read_response(ssl_socket);
-        std::cout << "Server: " << response << std::endl;
+        std::cout << "AUTH response: " << response << std::endl;
 
         // Send encoded_email
         std::string encoded_email = base64_encode(EMAIL) + "\r\n";
         send_command(ssl_socket, encoded_email);
         response = read_response(ssl_socket);
-        std::cout << "Server: " << response << std::endl;
+        std::cout << "AUTH response: " << response << std::endl;
 
         // Send encoded password
         std::string encoded_password = base64_encode(PASSWORD) + "\r\n";
         send_command(ssl_socket, encoded_password);
         response = read_response(ssl_socket);
-        std::cout << "LOGIN" << std::endl;
-        std::cout << "Server: " << response << std::endl;
-
-        // Prompt user for department code
-        std::string department_code;
-        std::cout << "Enter the department code (or 'all' to send to all departments): ";
-        std::getline(std::cin, department_code);
+        std::cout << "AUTH response: " << response << std::endl;
 
         // Read the CSV file
         std::vector<Recipient> recipients;
@@ -407,24 +400,29 @@ void send_emails() {
     }
 }
 
-int main() {
-    while (true) {
-        std::string command;
-        std::cout << "\nEnter a command ('send' or 'get_count', or 'exit' to quit): ";
-        std::getline(std::cin, command);
-
-        if (command == "send") {
-            // Call the send function
-            send_emails();
-        } else if (command == "get_count") {
-            // Call the get_count function
-            get_count();
-        } else if (command == "exit") {
-            std::cout << "Exiting program.\n";
-            break;
-        } else {
-            std::cout << "Invalid command. Please enter 'send', 'get_count', or 'exit'.\n";
-        }
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        std::cout << "Usage: ./smart_mailer <command> [options]\n";
+        std::cout << "Commands:\n";
+        std::cout << "  send [recipient]\n";
+        std::cout << "  get_count\n";
+        return 1;
     }
+
+    std::string command = argv[1];
+
+    if (command == "send") {
+        std::string recipient = "all"; // Default recipient
+        if (argc >= 3) {
+            recipient = argv[2]; // Get recipient from command line
+        }
+        send_emails(recipient);
+    } else if (command == "get_count") {
+        get_count();
+    } else {
+        std::cout << "Invalid command. Please use 'send' or 'get_count'.\n";
+        return 1;
+    }
+
     return 0;
 }
