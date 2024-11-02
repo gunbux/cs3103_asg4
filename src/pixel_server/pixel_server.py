@@ -4,7 +4,7 @@ import os
 app = Flask(__name__)
 
 # Define path to image and counter file
-image_path = '../assets/pixel.png'  # Replace with your image's file path
+image_path = './pixel.png'  # Replace with your image's file path
 counter_file = 'counter.txt'
 
 # Ensure the counter file exists

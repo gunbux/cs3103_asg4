@@ -32,6 +32,7 @@ ARG GIT_COMMIT_HASH
 ENV GIT_COMMIT_HASH $GIT_COMMIT_HASH
 
 COPY ./src/pixel_server .
+COPY ./assets/pixel.png .
 
 # install dependencies
 COPY --from=builder /usr/src/app/wheels /wheels
