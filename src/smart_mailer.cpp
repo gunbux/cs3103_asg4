@@ -149,42 +149,46 @@ void get_count() {
         // The io_context is required for all I/O
         net::io_context ioc;
 
+        // The SSL context is required, and holds certificates
+        ssl::context ctx(ssl::context::tlsv12_client);
+
         // These objects perform our I/O
         tcp::resolver resolver(ioc);
-        tcp::socket socket(ioc);
+        ssl::stream<tcp::socket> ssl_socket(ioc, ctx);
 
         // Look up the domain name
         auto const results = resolver.resolve(pixel_server_ip, pixel_server_port);
 
         // Make the connection on the IP address we get from a lookup
-        net::connect(socket, results.begin(), results.end());
+        net::connect(ssl_socket.next_layer(), results.begin(), results.end());
+
+        // Perform the SSL handshake
+        ssl_socket.handshake(ssl::stream_base::client);
 
         // Set up an HTTP GET request message
-        http::request <http::empty_body> req{http::verb::get, target, version};
+        http::request<http::empty_body> req{http::verb::get, target, version};
         req.set(http::field::host, pixel_server_ip);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
-        http::write(socket, req);
+        http::write(ssl_socket, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
 
         // Declare a container to hold the response
-        http::response <http::dynamic_body> res;
+        http::response<http::dynamic_body> res;
 
         // Receive the HTTP response
-        http::read(socket, buffer, res);
+        http::read(ssl_socket, buffer, res);
 
         // Write the message to stdout
         std::cout << res << std::endl;
 
         // Gracefully close the socket
         beast::error_code ec;
-        socket.shutdown(tcp::socket::shutdown_both, ec);
+        ssl_socket.shutdown(ec);
 
-        // not_connected happens sometimes
-        // so don't bother reporting it.
         if (ec && ec != beast::errc::not_connected)
             throw beast::system_error{ec};
 
