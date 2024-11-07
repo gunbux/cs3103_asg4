@@ -16,7 +16,49 @@ services:
       - "traefik.http.routers.pixel-server.entrypoints=websecure"
       - "traefik.http.routers.pixel-server.tls=true"
       - "traefik.http.routers.pixel-server.tls.certresolver=tlschallenge"
+  
+  smart_mailer:
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    stdin_open: true # Keep stdin open
+    tty: true # Allocate a pseudo-TTY
+    environment:
+      - SMTP_SERVER=your_smtp_server
+      - SMTP_DOMAIN=your_smtp_domain
+      - EMAIL=your_email@example.com
+      - PASSWORD=your_password
+    networks:
+      - intranet
+    ports:
+      - "8081:8081"
+    #volumes:
+      #- ./src/assets:/app/assets # Mount assets directory for template and CSV file access
+    #command: ./smart_mailer send all --template /app/assets/email_template.txt --list /app/assets/email_list.csv
+
+  
+  # frontend:
+  #   build:
+  #     context: .  # Adjust if your frontend is in a subdirectory
+  #     dockerfile: smart-mailer/Dockerfile
+  #   ports:
+  #     - "3000:80"  # Map port 3000 on the host to port 80 on the container
+  
+  api:
+    build:
+      context: .
+      dockerfile: APIs/Dockerfile
+    ports:
+      - "3000:3000"
+    # volumes:
+    #   - ./smart_mailer:/usr/src/app
+    depends_on:
+      - smart_mailer
+    networks:
+      - intranet
+  
 
 networks:
   intranet:
     name: network_intranet
+

@@ -21,6 +21,7 @@
 #include <boost/beast/core/detail/base64.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
+#include <iostream>
 
 // SMTP Server Details
 const std::string SMTP_SERVER = std::getenv("SMTP_SERVER") ? std::getenv("SMTP_SERVER") : "";
@@ -35,6 +36,8 @@ const std::string pixel_server_port = "443";
 const std::string DEFAULT_EMAIL_TEMPLATE = "./assets/email_template.txt";
 
 const std::string DEFAULT_MAIL_CSV_PATH = "./assets/email_list.csv";
+const std::string DEFAULT_DEPARTMENT_CODE = "all"; // Replace with your default department code
+const std::string DEFAULT_EMAIL_LIST = "path/to/email_list.csv"; // Replace with the actual path
 
 // Boost namespaces
 namespace beast = boost::beast;
@@ -416,39 +419,67 @@ void send_emails(const std::string &department_code, const std::string &email_te
     }
 }
 
-int main(int argc, char *argv[]) {
-    std::string email_template = DEFAULT_EMAIL_TEMPLATE;
-    std::string email_list = DEFAULT_MAIL_CSV_PATH;
-
-    if (argc < 2) {
-        std::cout << "Usage: ./smart_mailer <command> [options]\n";
-        std::cout << "Commands:\n";
-        std::cout << "  send [recipient] [--template <email_template.txt>] [--list <email_list.csv>]\n";
-        std::cout << "  get_count\n";
-        return 1;
-    }
-
-    std::string command = argv[1];
-
-    for (int i = 2; i < argc; ++i) {
-        if (std::string(argv[i]) == "--template" && i + 1 < argc) {
-            email_template = argv[++i];
-        } else if (std::string(argv[i]) == "--list" && i + 1 < argc) {
-            email_list = argv[++i];
-        }
-    }
-
-    if (command == "send") {
-        std::string recipient = "all"; // Default recipient
-        if (argc >= 3) {
-            recipient = argv[2]; // Get recipient from command line
-        }
-        send_emails(recipient, email_template, email_list);
-    } else if (command == "get_count") {
-        get_count();
+void handle_command(const std::string &command) {
+    if (command == "send_email") {
+        std::cout << "Executing email sending function." << std::endl;
+        send_emails(DEFAULT_DEPARTMENT_CODE, DEFAULT_EMAIL_TEMPLATE, DEFAULT_MAIL_CSV_PATH);
+        std::cout << "Email sending function completed." << std::endl;
     } else {
-        std::cout << "Invalid command. Please use 'send' or 'get_count'.\n";
-        return 1;
+        std::cout << "Unknown command: " << command << std::endl;
+    }
+}
+
+int main(int argc, char *argv[]) {
+    // std::string email_template = DEFAULT_EMAIL_TEMPLATE;
+    // std::string email_list = DEFAULT_MAIL_CSV_PATH;
+
+    // if (argc < 2) {
+    //     std::cout << "Usage: ./smart_mailer <command> [options]\n";
+    //     std::cout << "Commands:\n";
+    //     std::cout << "  send [recipient] [--template <email_template.txt>] [--list <email_list.csv>]\n";
+    //     std::cout << "  get_count\n";
+    //     return 1;
+    // }
+
+    // std::string command = argv[1];
+
+    // for (int i = 2; i < argc; ++i) {
+    //     if (std::string(argv[i]) == "--template" && i + 1 < argc) {
+    //         email_template = argv[++i];
+    //     } else if (std::string(argv[i]) == "--list" && i + 1 < argc) {
+    //         email_list = argv[++i];
+    //     }
+    // }
+
+    // if (command == "send") {
+    //     std::string recipient = "all"; // Default recipient
+    //     if (argc >= 3) {
+    //         recipient = argv[2]; // Get recipient from command line
+    //     }
+    //     send_emails(recipient, email_template, email_list);
+    // } else if (command == "get_count") {
+    //     get_count();
+    // } else {
+    //     std::cout << "Invalid command. Please use 'send' or 'get_count'.\n";
+    //     return 1;
+    // }
+
+    // return 0;
+
+    boost::asio::io_context io_context;
+    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 8081)); // Listening on port 8081
+
+    while (true) {
+        tcp::socket socket(io_context);
+        acceptor.accept(socket);
+
+        boost::asio::streambuf buffer;
+        boost::asio::read_until(socket, buffer, "\n");
+        std::istream is(&buffer);
+        std::string command;
+        std::getline(is, command);
+
+        handle_command(command);
     }
 
     return 0;
