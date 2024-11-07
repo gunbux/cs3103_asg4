@@ -126,6 +126,8 @@ std::string email_body;
 
 void read_email_template(const std::string &filename, std::string &subject, std::string &body) {
     std::ifstream file(filename);
+    //std::istringstream file_stream(file_content);  // Use string stream to read content
+
     if (!file.is_open()) {
         std::cerr << "Error opening email template file: " << filename << std::endl;
         return;
@@ -140,6 +142,14 @@ void read_email_template(const std::string &filename, std::string &subject, std:
     body = buffer.str();
 
     file.close();
+
+    // // Read the first line as subject
+    // std::getline(file_stream, subject);
+
+    // // Read the rest as body
+    // std::stringstream buffer;
+    // buffer << file_stream.rdbuf();
+    // body = buffer.str();
 }
 
 void get_count() {
@@ -425,6 +435,48 @@ void handle_command(const std::string &command) {
     } else {
         std::cout << "Unknown command: " << command << std::endl;
     }
+}
+
+void create_txt_file(const std::string &filename, const std::string &content) {
+    // Open the file in write mode
+    std::ofstream out_file(filename);
+    
+    if (!out_file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+
+    // Write the content to the file
+    out_file << content;
+
+    // Close the file
+    out_file.close();
+    std::cout << "File created successfully: " << filename << std::endl;
+}
+
+// Function to create a .csv file and write recipient data
+void create_csv_file(const std::string &filename, const std::vector<Recipient> &recipients) {
+    // Open the file in write mode
+    std::ofstream out_file(filename);
+
+    if (!out_file.is_open()) {
+        std::cerr << "Error opening file: " << filename << std::endl;
+        return;
+    }
+
+    // Write the CSV header
+    out_file << "Department Code,Email,Name\n";
+
+    // Write each recipient's data
+    for (const auto &recipient : recipients) {
+        out_file << recipient.department_code << ","
+                 << recipient.email << ","
+                 << recipient.name << "\n";
+    }
+
+    // Close the file
+    out_file.close();
+    std::cout << "CSV file created successfully: " << filename << std::endl;
 }
 
 int main(int argc, char *argv[]) {
