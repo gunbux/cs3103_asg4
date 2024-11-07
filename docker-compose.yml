@@ -16,6 +16,22 @@ services:
       - "traefik.http.routers.pixel-server.entrypoints=websecure"
       - "traefik.http.routers.pixel-server.tls=true"
       - "traefik.http.routers.pixel-server.tls.certresolver=tlschallenge"
+  backend-api:
+    build:
+      context: .
+      dockerfile: src/backend_api/Dockerfile
+      args:
+        - GIT_COMMIT_HASH
+    restart: on-failure
+    networks:
+      - intranet
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pixel-server.rule=Host(`mailer.chunyu.sh`)"
+      - "traefik.http.services.pixel-server.loadbalancer.server.port=5000"
+      - "traefik.http.routers.pixel-server.entrypoints=websecure"
+      - "traefik.http.routers.pixel-server.tls=true"
+      - "traefik.http.routers.pixel-server.tls.certresolver=tlschallenge"
 
 networks:
   intranet:
