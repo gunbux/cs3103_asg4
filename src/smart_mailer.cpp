@@ -33,12 +33,10 @@ const std::string PASSWORD = std::getenv("PASSWORD") ? std::getenv("PASSWORD") :
 const std::string pixel_server_ip = "pixel.chunyu.sh";
 const std::string pixel_server_port = "443";
 
-const std::string DEFAULT_EMAIL_TEMPLATE = "./assets/email_template.txt";
+const std::string DEFAULT_EMAIL_TEMPLATE = "/app/assets/email_template.txt";
 
-const std::string DEFAULT_MAIL_CSV_PATH = "./assets/email_list.csv";
+const std::string DEFAULT_MAIL_CSV_PATH = "/app/assets/email_list.csv";
 const std::string DEFAULT_DEPARTMENT_CODE = "all"; // Replace with your default department code
-const std::string DEFAULT_EMAIL_LIST = "path/to/email_list.csv"; // Replace with the actual path
-
 // Boost namespaces
 namespace beast = boost::beast;
 namespace http = beast::http;

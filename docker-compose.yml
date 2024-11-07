@@ -24,10 +24,10 @@ services:
     stdin_open: true # Keep stdin open
     tty: true # Allocate a pseudo-TTY
     environment:
-      - SMTP_SERVER=your_smtp_server
-      - SMTP_DOMAIN=your_smtp_domain
-      - EMAIL=your_email@example.com
-      - PASSWORD=your_password
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_DOMAIN=smtp.gmail.com
+      - EMAIL=acehql3@gmail.com
+      - PASSWORD=mvys yiip fejl pdps
     networks:
       - intranet
     ports:

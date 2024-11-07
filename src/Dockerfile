@@ -22,6 +22,9 @@ WORKDIR /app
 # Copy the C++ source code into the container
 COPY ./src/smart_mailer.cpp .
 
+# Copy the assets directory into the container
+COPY ./src/assets /app/assets
+
 # Compile the C++ code
 RUN g++ smart_mailer.cpp -o smart_mailer -lboost_system -lssl -lcrypto -lpthread
 

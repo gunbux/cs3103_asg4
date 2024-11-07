@@ -1,0 +1,9 @@
+Welcome, #name#
+
+<p>Hello #name#,</p>
+
+<p>This email is for #department#.</p>
+
+<p>Testing Email.</p>
+
+<p>Best regards,<br>CS3103 A4 Group52</p>
